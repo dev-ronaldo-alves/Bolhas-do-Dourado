@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, orientation=portrait">
+    <title>Bolhas do Dourado</title>
+    <link rel="icon" type="image/svg+xml" href="./img/peixe-dourado.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            background: #0a3d62;
+            max-width: 100vw;
+            max-height: 100vh;
+            object-fit: contain;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: rgba(0, 20, 40, 0.85);
+            border-radius: 20px;
+            padding: 30px 25px;
+            margin: 20px;
+            color: #fff;
+            pointer-events: auto;
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+            width: 85%;
+            max-width: 400px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1 {
+            font-size: 2.2em;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+
+        p {
+            font-size: 0.95em;
+            margin: 8px 0;
+            color: #cce6ff;
+            line-height: 1.4;
+        }
+
+        .instructions {
+            font-size: 0.85em;
+            color: #aad4ff;
+            margin: 12px 0;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px 15px;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .instructions span {
+            display: inline-block;
+            background: #ffd700;
+            color: #0a3d62;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 0.8em;
+            margin-right: 3px;
+        }
+
+        button {
+            background: linear-gradient(180deg, #ffd700, #e6b800);
+            color: #0a3d62;
+            border: none;
+            padding: 14px 40px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 15px;
+            letter-spacing: 1px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+            pointer-events: auto;
+        }
+
+        button:active {
+            transform: scale(0.94);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(180deg, #e6b800, #cc9f00);
+        }
+
+        .score-final {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+
+        .high-score {
+            font-size: 1.2em;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Tela de Início -->
+    <div id="start-screen" class="screen active">
+        <h1>🐟 Bolhas do Dourado</h1>
+        <div class="instructions">
+            <p><span>↕️ Arraste</span> para mover o peixinho</p>
+            <p><span>👆 Toque</span> para soltar bolhas</p>
+            <p><span>💊 Power-ups</span> melhoram as bolhas</p>
+        </div>
+        <p style="font-size:0.8em;color:#ffd700;">⚡ Cuidado com polvos, tubarões e peixes-espada!</p>
+        <button id="btn-start">INICIAR</button>
+    </div>
+
+    <!-- Tela de Game Over -->
+    <div id="gameover-screen" class="screen">
+        <h2>GAME OVER</h2>
+        <p style="font-size:1em;">Sua Pontuação:</p>
+        <div class="score-final" id="final-score">0</div>
+        <p class="high-score">🏆 Recorde: <span id="high-score-display">0</span></p>
+        <button id="btn-restart">JOGAR NOVAMENTE</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // ========== CANVAS SETUP ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Dimensões base (retrato mobile)
+        const BASE_WIDTH = 420;
+        const BASE_HEIGHT = 720;
+        let scale = 1;
+
+        function resizeCanvas() {
+            const maxW = window.innerWidth;
+            const maxH = window.innerHeight;
+            const ratio = BASE_WIDTH / BASE_HEIGHT;
+
+            let w, h;
+            if (maxW / maxH > ratio) {
+                h = maxH;
+                w = h * ratio;
+            } else {
+                w = maxW;
+                h = w / ratio;
+            }
+
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            canvas.width = BASE_WIDTH;
+            canvas.height = BASE_HEIGHT;
+            scale = BASE_WIDTH / w;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resizeCanvas, 300);
+        });
+        resizeCanvas();
+
+        // ========== IMAGENS (substitua os caminhos pelas suas imagens PNG) ==========
+        const imgPeixe = new Image();
+        imgPeixe.src = './img/peixe-dourado.png';
+        const imgPolvo = new Image();
+        imgPolvo.src = './img/polvo.png';
+        const imgTubarao = new Image();
+        imgTubarao.src = './img/tubarao.png';
+        const imgPeixeEspada = new Image();
+        imgPeixeEspada.src = './img/peixe-espada.png';
+        const imgAguaViva = new Image();
+        imgAguaViva.src = './img/agua-viva.png';
+        const imgPowerGigante = new Image();
+        imgPowerGigante.src = './img/power_gigante.png';
+        const imgPowerTriplo = new Image();
+        imgPowerTriplo.src = './img/power_triplo.png';
+        const imgPowerRapido = new Image();
+        imgPowerRapido.src = './img/power_rapido.png';
+        const imgCoracao = new Image();
+        imgCoracao.src = './img/coracao.png';
+        const imgFundo = new Image();
+        imgFundo.src = './img/fundo_oceano.png';
+
+        // ========== ÁUDIO (substitua pelos seus arquivos) ==========
+        const musicaFundo = new Audio('./sound/musica-fundo.mp3');
+        musicaFundo.loop = true;
+        musicaFundo.volume = 0.3;
+
+        const somDisparo = new Audio('./sound/disparo.mp3');
+        somDisparo.volume = 0.5;
+        const somExplosao = new Audio('./sound/explosao.mp3');
+        somExplosao.volume = 0.5;
+        const somPowerUp = new Audio('./sound/powerup.mp3');
+        somPowerUp.volume = 0.5;
+        const somDano = new Audio('./sound/dano.mp3');
+        somDano.volume = 0.5;
+        const somGameOver = new Audio('./sound/gameover.mp3');
+        somGameOver.volume = 0.6;
+
+        function tocarSom(audio) {
+            if (!audio || audio.readyState < 2) return;
+            try {
+                audio.currentTime = 0;
+                const promise = audio.play();
+                if (promise && promise.catch) {
+                    promise.catch(() => {});
+                }
+            } catch (e) {}
+        }
+
+        // ========== ESTADO DO JOGO ==========
+        const STATE = {
+            START: 'start',
+            PLAYING: 'playing',
+            GAMEOVER: 'gameover'
+        };
+
+        let gameState = STATE.START;
+        let score = 0;
+        let highScore = 0;
+        let lives = 3;
+        let invencibleTimer = 0;
+        let invencibleDuration = 120; // frames (2 segundos a 60fps)
+
+        // Carregar high score
+        try {
+            const saved = localStorage.getItem('bolhasDoDourado_highScore');
+            if (saved) highScore = parseInt(saved);
+        } catch (e) {}
+
+        // ========== JOGADOR (PEIXINHO) ==========
+        const player = {
+            x: 80,
+            y: BASE_HEIGHT / 2,
+            width: 48,
+            height: 32,
+            speed: 5,
+            targetY: BASE_HEIGHT / 2,
+            color: '#ffd700',
+            glowColor: '#fff8c0'
+        };
+
+        // ========== BOLHAS ==========
+        let bolhas = [];
+        const BOLHA_SPEED = 7;
+        const BOLHA_RADIUS = 6;
+        let bolhaCooldown = 0;
+        const BOLHA_COOLDOWN_BASE = 18; // frames entre disparos
+
+        // ========== POWER-UPS ATIVOS ==========
+        let powerupAtivo = null; // 'gigante' | 'triplo' | 'rapido'
+        let powerupTimer = 0;
+        const POWERUP_DURATION = 480; // 8 segundos a 60fps
+
+        // ========== INIMIGOS ==========
+        let inimigos = [];
+        const INIMIGO_TIPOS = {
+            polvo: { nome: 'polvo', largura: 44, altura: 36, vidas: 2, velocidade: 1.5, pontos: 100, cor: '#e84393',
+                tentaculos: true },
+            tubarao: { nome: 'tubarao', largura: 56, altura: 34, vidas: 1, velocidade: 2.8, pontos: 200, cor: '#636e72',
+                dente: true },
+            peixeEspada: { nome: 'peixeEspada', largura: 60, altura: 20, vidas: 1, velocidade: 3.5, pontos: 150,
+                cor: '#0984e3', espada: true },
+            aguaViva: { nome: 'aguaViva', largura: 36, altura: 44, vidas: 3, velocidade: 1.0, pontos: 120,
+            cor: '#dfe6e9', transparente: true }
+        };
+
+        let spawnTimer = 0;
+        let spawnInterval = 90; // frames base entre spawns
+        let baseSpeed = 1.0;
+        let speedMultiplier = 1.0;
+
+        // ========== POWER-UPS COLETÁVEIS ==========
+        let powerupsColetaveis = [];
+        let powerupSpawnTimer = 0;
+        const POWERUP_SPAWN_INTERVAL = 360; // 6 segundos
+
+        // ========== PARTÍCULAS ==========
+        let particulas = [];
+
+        // ========== FUNDO SCROLL ==========
+        let bgScroll = 0;
+        let bgSpeed = 2.5;
+        // Bolhas decorativas de fundo
+        let bgBubbles = [];
+        for (let i = 0; i < 20; i++) {
+            bgBubbles.push({
+                x: Math.random() * BASE_WIDTH,
+                y: Math.random() * BASE_HEIGHT,
+                radius: Math.random() * 3 + 1,
+                speed: Math.random() * 0.8 + 0.2,
+                alpha: Math.random() * 0.4 + 0.1
+            });
+        }
+
+        // ========== CONTROLES TOUCH ==========
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchCurrentY = 0;
+        let touchActive = false;
+        let touchMoved = false;
+        const TAP_THRESHOLD = 6; // pixels para diferenciar tap de drag
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState !== STATE.PLAYING) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            touchStartX = (touch.clientX - rect.left) * scale;
+            touchStartY = (touch.clientY - rect.top) * scale;
+            touchCurrentY = touchStartY;
+            touchActive = true;
+            touchMoved = false;
+            player.targetY = touchStartY;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!touchActive || gameState !== STATE.PLAYING) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const cx = (touch.clientX - rect.left) * scale;
+            const cy = (touch.clientY - rect.top) * scale;
+            const dx = cx - touchStartX;
+            const dy = cy - touchStartY;
+            if (Math.abs(dx) > TAP_THRESHOLD || Math.abs(dy) > TAP_THRESHOLD) {
+                touchMoved = true;
+            }
+            touchCurrentY = cy;
+            player.targetY = cy;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (gameState !== STATE.PLAYING) {
+                touchActive = false;
+                return;
+            }
+            if (!touchMoved && touchActive) {
+                // TAP = disparo
+                dispararBolha();
+            }
+            touchActive = false;
+            touchMoved = false;
+        }, { passive: false });
+
+        // Mouse para teste no desktop
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameState !== STATE.PLAYING) return;
+            const rect = canvas.getBoundingClientRect();
+            touchStartX = (e.clientX - rect.left) * scale;
+            touchStartY = (e.clientY - rect.top) * scale;
+            touchCurrentY = touchStartY;
+            touchActive = true;
+            touchMoved = false;
+            player.targetY = touchStartY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!touchActive || gameState !== STATE.PLAYING) return;
+            const rect = canvas.getBoundingClientRect();
+            const cx = (e.clientX - rect.left) * scale;
+            const cy = (e.clientY - rect.top) * scale;
+            const dx = cx - touchStartX;
+            const dy = cy - touchStartY;
+            if (Math.abs(dx) > TAP_THRESHOLD || Math.abs(dy) > TAP_THRESHOLD) {
+                touchMoved = true;
+            }
+            touchCurrentY = cy;
+            player.targetY = cy;
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (gameState !== STATE.PLAYING) {
+                touchActive = false;
+                return;
+            }
+            if (!touchMoved && touchActive) {
+                dispararBolha();
+            }
+            touchActive = false;
+            touchMoved = false;
+        });
+
+        function dispararBolha() {
+            if (bolhaCooldown > 0) return;
+
+            const cooldownAtual = powerupAtivo === 'rapido' ? BOLHA_COOLDOWN_BASE / 2 : BOLHA_COOLDOWN_BASE;
+            bolhaCooldown = cooldownAtual;
+
+            tocarSom(somDisparo);
+
+            if (powerupAtivo === 'triplo') {
+                bolhas.push({
+                    x: player.x + player.width / 2,
+                    y: player.y,
+                    vx: BOLHA_SPEED,
+                    vy: 0,
+                    radius: BOLHA_RADIUS,
+                    gigante: false,
+                    cor: '#a0e7ff'
+                });
+                bolhas.push({
+                    x: player.x + player.width / 2,
+                    y: player.y,
+                    vx: BOLHA_SPEED * 0.92,
+                    vy: -1.5,
+                    radius: BOLHA_RADIUS,
+                    gigante: false,
+                    cor: '#a0e7ff'
+                });
+                bolhas.push({
+                    x: player.x + player.width / 2,
+                    y: player.y,
+                    vx: BOLHA_SPEED * 0.92,
+                    vy: 1.5,
+                    radius: BOLHA_RADIUS,
+                    gigante: false,
+                    cor: '#a0e7ff'
+                });
+            } else if (powerupAtivo === 'gigante') {
+                bolhas.push({
+                    x: player.x + player.width / 2,
+                    y: player.y,
+                    vx: BOLHA_SPEED * 0.9,
+                    vy: 0,
+                    radius: BOLHA_RADIUS * 3,
+                    gigante: true,
+                    cor: '#ffeb3b'
+                });
+            } else {
+                bolhas.push({
+                    x: player.x + player.width / 2,
+                    y: player.y,
+                    vx: BOLHA_SPEED,
+                    vy: 0,
+                    radius: BOLHA_RADIUS,
+                    gigante: false,
+                    cor: '#a0e7ff'
+                });
+            }
+        }
+
+        // ========== FUNÇÕES DE SPAWN ==========
+        function spawnarInimigo() {
+            const tipos = Object.keys(INIMIGO_TIPOS);
+            const tipoNome = tipos[Math.floor(Math.random() * tipos.length)];
+            const tipo = INIMIGO_TIPOS[tipoNome];
+            const y = Math.random() * (BASE_HEIGHT - tipo.altura - 60) + 30;
+            inimigos.push({
+                x: BASE_WIDTH + tipo.largura,
+                y: y,
+                largura: tipo.largura,
+                altura: tipo.altura,
+                vidas: tipo.vidas,
+                vidasMax: tipo.vidas,
+                velocidade: tipo.velocidade * speedMultiplier,
+                pontos: tipo.pontos,
+                cor: tipo.cor,
+                tipo: tipo,
+                imagem: tipoNome === 'polvo' ? imgPolvo :
+                    tipoNome === 'tubarao' ? imgTubarao :
+                    tipoNome === 'peixeEspada' ? imgPeixeEspada : imgAguaViva
+            });
+        }
+
+        function spawnarPowerup() {
+            const tipos = ['gigante', 'triplo', 'rapido'];
+            const tipo = tipos[Math.floor(Math.random() * tipos.length)];
+            const y = Math.random() * (BASE_HEIGHT - 60) + 30;
+            let imagem;
+            switch (tipo) {
+                case 'gigante':
+                    imagem = imgPowerGigante;
+                    break;
+                case 'triplo':
+                    imagem = imgPowerTriplo;
+                    break;
+                case 'rapido':
+                    imagem = imgPowerRapido;
+                    break;
+            }
+            powerupsColetaveis.push({
+                x: BASE_WIDTH + 40,
+                y: y,
+                largura: 30,
+                altura: 30,
+                tipo: tipo,
+                velocidade: 1.5 * speedMultiplier,
+                cor: tipo === 'gigante' ? '#ffeb3b' : tipo === 'triplo' ? '#00cec9' : '#fd79a8',
+                imagem: imagem,
+                pulsar: 0
+            });
+        }
+
+        function criarExplosao(x, y, cor, quantidade = 15) {
+            for (let i = 0; i < quantidade; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 2;
+                particulas.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 4 + 2,
+                    cor: cor,
+                    alpha: 1,
+                    decay: Math.random() * 0.04 + 0.02
+                });
+            }
+        }
+
+        // ========== ATUALIZAÇÃO DO JOGO ==========
+        function atualizar() {
+            if (gameState !== STATE.PLAYING) return;
+
+            // Atualizar player
+            const dy = player.targetY - player.y;
+            if (Math.abs(dy) > 1) {
+                player.y += Math.sign(dy) * Math.min(Math.abs(dy), player.speed);
+            }
+            // Limitar player à tela
+            if (player.y < player.height / 2) player.y = player.height / 2;
+            if (player.y > BASE_HEIGHT - player.height / 2) player.y = BASE_HEIGHT - player.height / 2;
+
+            // Atualizar bolhas
+            for (let i = bolhas.length - 1; i >= 0; i--) {
+                const b = bolhas[i];
+                b.x += b.vx;
+                b.y += b.vy;
+                if (b.x > BASE_WIDTH + 50 || b.y < -50 || b.y > BASE_HEIGHT + 50) {
+                    bolhas.splice(i, 1);
+                }
+            }
+
+            // Cooldown de disparo
+            if (bolhaCooldown > 0) bolhaCooldown--;
+
+            // Invencibilidade
+            if (invencibleTimer > 0) invencibleTimer--;
+
+            // Power-up ativo
+            if (powerupTimer > 0) {
+                powerupTimer--;
+                if (powerupTimer <= 0) {
+                    powerupAtivo = null;
+                }
+            }
+
+            // Spawn de inimigos
+            spawnTimer++;
+            const intervaloAtual = Math.max(20, spawnInterval / speedMultiplier);
+            if (spawnTimer >= intervaloAtual) {
+                spawnTimer = 0;
+                spawnarInimigo();
+            }
+
+            // Spawn de power-ups
+            powerupSpawnTimer++;
+            if (powerupSpawnTimer >= POWERUP_SPAWN_INTERVAL / speedMultiplier) {
+                powerupSpawnTimer = 0;
+                if (Math.random() < 0.7) spawnarPowerup();
+            }
+
+            // Atualizar inimigos
+            for (let i = inimigos.length - 1; i >= 0; i--) {
+                const inimigo = inimigos[i];
+                inimigo.x -= inimigo.velocidade;
+                if (inimigo.x < -80) {
+                    inimigos.splice(i, 1);
+                    continue;
+                }
+
+                // Colisão com bolhas
+                let acertado = false;
+                for (let j = bolhas.length - 1; j >= 0; j--) {
+                    const b = bolhas[j];
+                    const dx = (b.x) - (inimigo.x);
+                    const dy = (b.y) - (inimigo.y);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const colisaoDist = b.radius + Math.min(inimigo.largura, inimigo.altura) / 2;
+
+                    if (dist < colisaoDist) {
+                        // Acerto!
+                        if (b.gigante) {
+                            inimigo.vidas = 0;
+                        } else {
+                            inimigo.vidas--;
+                        }
+                        if (!b.gigante) {
+                            bolhas.splice(j, 1);
+                        }
+                        acertado = true;
+                        if (inimigo.vidas <= 0) break;
+                    }
+                }
+
+                if (inimigo.vidas <= 0) {
+                    criarExplosao(inimigo.x, inimigo.y, inimigo.cor, 20);
+                    tocarSom(somExplosao);
+                    score += inimigo.pontos;
+                    // Aumentar dificuldade
+                    atualizarDificuldade();
+                    inimigos.splice(i, 1);
+                    continue;
+                }
+
+                if (acertado && inimigo.vidas > 0) {
+                    criarExplosao(inimigo.x - 10, inimigo.y, '#ffffff', 5);
+                }
+
+                // Colisão com player
+                if (invencibleTimer <= 0) {
+                    const px = player.x;
+                    const py = player.y;
+                    const pw = player.width;
+                    const ph = player.height;
+                    const ix = inimigo.x - inimigo.largura / 2;
+                    const iy = inimigo.y - inimigo.altura / 2;
+                    const iw = inimigo.largura;
+                    const ih = inimigo.altura;
+
+                    if (
+                        px - pw / 2 < ix + iw &&
+                        px + pw / 2 > ix &&
+                        py - ph / 2 < iy + ih &&
+                        py + ph / 2 > iy
+                    ) {
+                        // Dano
+                        lives--;
+                        invencibleTimer = invencibleDuration;
+                        tocarSom(somDano);
+                        criarExplosao(player.x, player.y, '#ff6b6b', 12);
+
+                        if (lives <= 0) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Atualizar power-ups coletáveis
+            for (let i = powerupsColetaveis.length - 1; i >= 0; i--) {
+                const pu = powerupsColetaveis[i];
+                pu.x -= pu.velocidade;
+                pu.pulsar += 0.06;
+                if (pu.x < -50) {
+                    powerupsColetaveis.splice(i, 1);
+                    continue;
+                }
+
+                // Colisão com player
+                const px = player.x;
+                const py = player.y;
+                const pw = player.width;
+                const ph = player.height;
+                const pux = pu.x - pu.largura / 2;
+                const puy = pu.y - pu.altura / 2;
+
+                if (
+                    px - pw / 2 < pux + pu.largura &&
+                    px + pw / 2 > pux &&
+                    py - ph / 2 < puy + pu.altura &&
+                    py + ph / 2 > puy
+                ) {
+                    powerupAtivo = pu.tipo;
+                    powerupTimer = POWERUP_DURATION;
+                    tocarSom(somPowerUp);
+                    criarExplosao(pu.x, pu.y, pu.cor, 8);
+                    powerupsColetaveis.splice(i, 1);
+                }
+            }
+
+            // Atualizar partículas
+            for (let i = particulas.length - 1; i >= 0; i--) {
+                const p = particulas[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) {
+                    particulas.splice(i, 1);
+                }
+            }
+
+            // Atualizar fundo
+            bgScroll = (bgScroll + bgSpeed * speedMultiplier) % BASE_WIDTH;
+
+            // Bolhas de fundo
+            for (let b of bgBubbles) {
+                b.y -= b.speed;
+                b.x += Math.sin(b.y * 0.02) * 0.3;
+                if (b.y < -10) {
+                    b.y = BASE_HEIGHT + 10;
+                    b.x = Math.random() * BASE_WIDTH;
+                }
+            }
+        }
+
+        function atualizarDificuldade() {
+            speedMultiplier = 1.0 + Math.floor(score / 500) * 0.15;
+            spawnInterval = Math.max(20, 90 - Math.floor(score / 500) * 8);
+            bgSpeed = 2.5 + Math.floor(score / 500) * 0.5;
+        }
+
+        function gameOver() {
+            gameState = STATE.GAMEOVER;
+            tocarSom(somGameOver);
+            musicaFundo.pause();
+            musicaFundo.currentTime = 0;
+
+            if (score > highScore) {
+                highScore = score;
+                try {
+                    localStorage.setItem('bolhasDoDourado_highScore', highScore);
+                } catch (e) {}
+            }
+
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('high-score-display').textContent = highScore;
+            document.getElementById('gameover-screen').classList.add('active');
+            document.getElementById('start-screen').classList.remove('active');
+        }
+
+        function resetarJogo() {
+            score = 0;
+            lives = 3;
+            invencibleTimer = 0;
+            bolhas = [];
+            inimigos = [];
+            powerupsColetaveis = [];
+            particulas = [];
+            bolhaCooldown = 0;
+            spawnTimer = 0;
+            powerupSpawnTimer = 0;
+            spawnInterval = 90;
+            speedMultiplier = 1.0;
+            bgSpeed = 2.5;
+            powerupAtivo = null;
+            powerupTimer = 0;
+            player.y = BASE_HEIGHT / 2;
+            player.targetY = BASE_HEIGHT / 2;
+            bgScroll = 0;
+
+            document.getElementById('gameover-screen').classList.remove('active');
+            document.getElementById('start-screen').classList.remove('active');
+            gameState = STATE.PLAYING;
+            musicaFundo.currentTime = 0;
+            musicaFundo.play().catch(() => {});
+        }
+
+        function iniciarJogo() {
+            resetarJogo();
+            document.getElementById('start-screen').classList.remove('active');
+            document.getElementById('gameover-screen').classList.remove('active');
+            gameState = STATE.PLAYING;
+            musicaFundo.play().catch(() => {});
+        }
+
+        // ========== RENDERIZAÇÃO ==========
+        function desenharFundo() {
+            // Gradiente do oceano
+            const grad = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+            grad.addColorStop(0, '#0a3d62');
+            grad.addColorStop(0.5, '#1e6fa0');
+            grad.addColorStop(1, '#0c2d48');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+            // Tentar desenhar imagem de fundo
+            if (imgFundo.complete && imgFundo.naturalWidth > 0) {
+                ctx.globalAlpha = 0.3;
+                const padrao = ctx.createPattern(imgFundo, 'repeat-x');
+                if (padrao) {
+                    ctx.fillStyle = padrao;
+                    ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            // Raios de luz
+            ctx.globalAlpha = 0.06;
+            for (let i = 0; i < 5; i++) {
+                const lx = (i * 100 + bgScroll * 0.3) % (BASE_WIDTH + 200) - 100;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(lx, 0);
+                ctx.lineTo(lx + 30, BASE_HEIGHT);
+                ctx.lineTo(lx - 20, BASE_HEIGHT);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Bolhas decorativas
+            for (let b of bgBubbles) {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255,255,255,${b.alpha})`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+                // Brilho
+                ctx.beginPath();
+                ctx.arc(b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.25, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,255,255,${b.alpha * 1.5})`;
+                ctx.fill();
+            }
+        }
+
+        function desenharPlaceholderPeixe(x, y, w, h) {
+            ctx.save();
+            ctx.translate(x, y);
+            // Corpo
+            const grad = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+            grad.addColorStop(0, '#ffd700');
+            grad.addColorStop(0.5, '#ffe566');
+            grad.addColorStop(1, '#ffb300');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Olho
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(w / 4, -h / 6, h / 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(w / 4 + 2, -h / 6, h / 9, 0, Math.PI * 2);
+            ctx.fill();
+            // Cauda
+            ctx.fillStyle = '#ffb300';
+            ctx.beginPath();
+            ctx.moveTo(-w / 2, 0);
+            ctx.lineTo(-w / 2 - w / 3, -h / 1.8);
+            ctx.lineTo(-w / 2 - w / 5, 0);
+            ctx.lineTo(-w / 2 - w / 3, h / 1.8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function desenharPlaceholderInimigo(x, y, tipo) {
+            ctx.save();
+            ctx.translate(x, y);
+            const t = INIMIGO_TIPOS[tipo.nome];
+            if (!t) {
+                ctx.restore();
+                return;
+            }
+
+            if (tipo.nome === 'polvo') {
+                // Corpo oval
+                ctx.fillStyle = t.cor;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, t.largura / 2, t.altura / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Tentáculos
+                ctx.strokeStyle = t.cor;
+                ctx.lineWidth = 4;
+                for (let i = -2; i <= 2; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * 7, t.altura / 2 - 2);
+                    ctx.quadraticCurveTo(i * 10, t.altura / 2 + 18, i * 6, t.altura / 2 + 30);
+                    ctx.stroke();
+                }
+                // Olhos
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-8, -5, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(8, -5, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-7, -4, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(9, -4, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (tipo.nome === 'tubarao') {
+                // Corpo
+                const grad = ctx.createLinearGradient(-t.largura / 2, 0, t.largura / 2, 0);
+                grad.addColorStop(0, '#4a5568');
+                grad.addColorStop(1, '#a0aec0');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, t.largura / 2, t.altura / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Barbatana
+                ctx.fillStyle = '#2d3748';
+                ctx.beginPath();
+                ctx.moveTo(-5, -t.altura / 2);
+                ctx.lineTo(10, -t.altura / 2 - 18);
+                ctx.lineTo(15, -t.altura / 2);
+                ctx.closePath();
+                ctx.fill();
+                // Dentes
+                ctx.fillStyle = '#fff';
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(t.largura / 2 - 5, -6 + i * 5);
+                    ctx.lineTo(t.largura / 2 + 8, -3 + i * 5);
+                    ctx.lineTo(t.largura / 2 - 5, 0 + i * 5);
+                    ctx.fill();
+                }
+                // Olho
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(t.largura / 4, -4, 4, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (tipo.nome === 'peixeEspada') {
+                ctx.fillStyle = t.cor;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, t.largura / 2, t.altura / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Espada
+                ctx.fillStyle = '#b0bec5';
+                ctx.beginPath();
+                ctx.moveTo(t.largura / 2, -2);
+                ctx.lineTo(t.largura / 2 + 20, 0);
+                ctx.lineTo(t.largura / 2, 2);
+                ctx.closePath();
+                ctx.fill();
+                // Olho
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(t.largura / 4, -2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (tipo.nome === 'aguaViva') {
+                ctx.globalAlpha = 0.7;
+                // Campânula
+                const grad = ctx.createRadialGradient(0, -5, 2, 0, 0, t.largura / 2);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.5, t.cor);
+                grad.addColorStop(1, 'rgba(223,230,233,0.3)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.ellipse(0, -t.altura / 6, t.largura / 2, t.altura / 3, 0, Math.PI, 0);
+                ctx.fill();
+                // Tentáculos
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 6; i++) {
+                    const tx = (i - 2.5) * 7;
+                    ctx.beginPath();
+                    ctx.moveTo(tx, t.altura / 4);
+                    ctx.quadraticCurveTo(tx + Math.sin(Date.now() / 500 + i) * 5, t.altura / 2 + 8, tx + Math.sin(Date
+                        .now() / 400 + i) * 8, t.altura / 2 + 25);
+                    ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
+            }
+            ctx.restore();
+        }
+
+        function desenharPlaceholderPowerup(x, y, tipo, pulsar) {
+            ctx.save();
+            ctx.translate(x, y);
+            const escala = 1 + Math.sin(pulsar) * 0.15;
+            ctx.scale(escala, escala);
+
+            // Círculo externo brilhante
+            ctx.fillStyle = tipo === 'gigante' ? '#ffeb3b' : tipo === 'triplo' ? '#00cec9' : '#fd79a8';
+            ctx.beginPath();
+            ctx.arc(0, 0, 16, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Ícone
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (tipo === 'gigante') ctx.fillText('💪', 0, 0);
+            else if (tipo === 'triplo') ctx.fillText('✨', 0, 0);
+            else ctx.fillText('⚡', 0, 0);
+
+            ctx.restore();
+        }
+
+        function desenharBolha(b) {
+            ctx.save();
+            const r = b.radius;
+            // Gradiente
+            const grad = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, r * 0.1, b.x, b.y, r);
+            grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+            grad.addColorStop(0.4, 'rgba(180,230,255,0.6)');
+            grad.addColorStop(1, 'rgba(100,180,220,0.2)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            // Brilho
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.beginPath();
+            ctx.arc(b.x - r * 0.3, b.y - r * 0.35, r * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function desenharUI() {
+            // Score
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`⭐ ${score}`, 15, 35);
+            // High score
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText(`🏆 ${highScore}`, 15, 55);
+
+            // Vidas
+            for (let i = 0; i < 3; i++) {
+                const cx = BASE_WIDTH - 40 - i * 35;
+                const cy = 30;
+                if (i < lives) {
+                    if (imgCoracao.complete && imgCoracao.naturalWidth > 0) {
+                        ctx.drawImage(imgCoracao, cx - 12, cy - 12, 24, 24);
+                    } else {
+                        ctx.fillStyle = '#ff4757';
+                        ctx.beginPath();
+                        // Coração simples
+                        const hx = cx;
+                        const hy = cy;
+                        ctx.moveTo(hx, hy + 6);
+                        ctx.bezierCurveTo(hx - 10, hy - 4, hx - 12, hy - 12, hx, hy - 8);
+                        ctx.bezierCurveTo(hx + 12, hy - 12, hx + 10, hy - 4, hx, hy + 6);
+                        ctx.fill();
+                    }
+                } else {
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.beginPath();
+                    const hx = cx;
+                    const hy = cy;
+                    ctx.moveTo(hx, hy + 6);
+                    ctx.bezierCurveTo(hx - 10, hy - 4, hx - 12, hy - 12, hx, hy - 8);
+                    ctx.bezierCurveTo(hx + 12, hy - 12, hx + 10, hy - 4, hx, hy + 6);
+                    ctx.fill();
+                }
+            }
+
+            // Power-up ativo
+            if (powerupAtivo) {
+                const tempoRestante = Math.ceil(powerupTimer / 60);
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(BASE_WIDTH / 2 - 55, 12, 110, 24);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px Arial';
+                ctx.textAlign = 'center';
+                let texto = '';
+                switch (powerupAtivo) {
+                    case 'gigante':
+                        texto = '💪 BOLHA GIGANTE';
+                        break;
+                    case 'triplo':
+                        texto = '✨ TIRO TRIPLO';
+                        break;
+                    case 'rapido':
+                        texto = '⚡ DISPARO RÁPIDO';
+                        break;
+                }
+                ctx.fillText(`${texto} ${tempoRestante}s`, BASE_WIDTH / 2, 30);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        function renderizar() {
+            ctx.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+            desenharFundo();
+
+            if (gameState === STATE.PLAYING || gameState === STATE.GAMEOVER) {
+                // Power-ups coletáveis
+                for (const pu of powerupsColetaveis) {
+                    if (pu.imagem && pu.imagem.complete && pu.imagem.naturalWidth > 0) {
+                        ctx.save();
+                        ctx.translate(pu.x, pu.y);
+                        const escala = 1 + Math.sin(pu.pulsar) * 0.15;
+                        ctx.scale(escala, escala);
+                        ctx.drawImage(pu.imagem, -pu.largura / 2, -pu.altura / 2, pu.largura, pu.altura);
+                        ctx.restore();
+                    } else {
+                        desenharPlaceholderPowerup(pu.x, pu.y, pu.tipo, pu.pulsar);
+                    }
+                }
+
+                // Inimigos
+                for (const inimigo of inimigos) {
+                    const img = inimigo.imagem;
+                    if (img && img.complete && img.naturalWidth > 0) {
+                        ctx.save();
+                        ctx.translate(inimigo.x, inimigo.y);
+                        // Não inverter tubarão e peixe-espada
+                        if (inimigo.tipo.nome !== 'tubarao' && inimigo.tipo.nome !== 'peixeEspada') {
+                            ctx.scale(-1, 1);
+                        }
+                        ctx.drawImage(img, -inimigo.largura / 2, -inimigo.altura / 2, inimigo.largura, inimigo.altura);
+                        ctx.restore();
+                    } else {
+                        desenharPlaceholderInimigo(inimigo.x, inimigo.y, inimigo.tipo);
+                    }
+                    // Barra de vida se tiver > 1 vida
+                    if (inimigo.vidasMax > 1 && inimigo.vidas > 0) {
+                        const barW = inimigo.largura;
+                        const barH = 4;
+                        const barX = inimigo.x - barW / 2;
+                        const barY = inimigo.y - inimigo.altura / 2 - 10;
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(barX, barY, barW, barH);
+                        ctx.fillStyle = '#2ecc71';
+                        ctx.fillRect(barX, barY, barW * (inimigo.vidas / inimigo.vidasMax), barH);
+                    }
+                }
+
+                // Bolhas
+                for (const b of bolhas) {
+                    desenharBolha(b);
+                }
+
+                // Player
+                const piscando = invencibleTimer > 0 && Math.floor(invencibleTimer / 5) % 2 === 0;
+                if (!piscando || invencibleTimer <= 0) {
+                    if (imgPeixe.complete && imgPeixe.naturalWidth > 0) {
+                        ctx.save();
+                        ctx.translate(player.x, player.y);
+                        // Leve ondulação
+                        const ondulacao = Math.sin(Date.now() / 200) * 2;
+                        ctx.translate(0, ondulacao);
+                        ctx.drawImage(imgPeixe, -player.width / 2, -player.height / 2, player.width, player.height);
+                        ctx.restore();
+                    } else {
+                        desenharPlaceholderPeixe(player.x, player.y, player.width, player.height);
+                    }
+
+                    // Efeito de power-up
+                    if (powerupAtivo) {
+                        ctx.save();
+                        ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 150) * 0.2;
+                        ctx.fillStyle = powerupAtivo === 'gigante' ? '#ffeb3b' :
+                            powerupAtivo === 'triplo' ? '#00cec9' : '#fd79a8';
+                        ctx.beginPath();
+                        ctx.arc(player.x, player.y, player.width * 0.7, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                } else {
+                    // Piscando durante invencibilidade
+                    ctx.globalAlpha = 0.4;
+                    if (imgPeixe.complete && imgPeixe.naturalWidth > 0) {
+                        ctx.drawImage(imgPeixe, player.x - player.width / 2, player.y - player.height / 2, player.width,
+                            player.height);
+                    } else {
+                        desenharPlaceholderPeixe(player.x, player.y, player.width, player.height);
+                    }
+                    ctx.globalAlpha = 1;
+                }
+
+                // Partículas
+                for (const p of particulas) {
+                    ctx.fillStyle = p.cor.replace(')', `,${p.alpha})`).replace('rgb',
+                        'rgba');
+                    if (p.cor.startsWith('#')) {
+                        ctx.globalAlpha = p.alpha;
+                        ctx.fillStyle = p.cor;
+                    }
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+
+                // UI
+                desenharUI();
+            }
+
+            // Overlay de game over
+            if (gameState === STATE.GAMEOVER) {
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+            }
+
+            // Instrução sutil na tela de jogo
+            if (gameState === STATE.PLAYING && score === 0 && inimigos.length === 0) {
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Arraste para mover • Toque para disparar', BASE_WIDTH / 2, BASE_HEIGHT - 40);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        // ========== GAME LOOP ==========
+        function gameLoop() {
+            atualizar();
+            renderizar();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ========== BOTÕES ==========
+        document.getElementById('btn-start').addEventListener('click', iniciarJogo);
+        document.getElementById('btn-restart').addEventListener('click', resetarJogo);
+
+        // Prevenir scroll e zoom
+        document.addEventListener('touchmove', function(e) {
+            if (e.target === canvas || canvas.contains(e.target)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // ========== INICIAR ==========
+        // Mostrar high score na tela inicial
+        document.getElementById('high-score-display').textContent = highScore;
+
+        // Iniciar loop
+        gameLoop();
+
+        console.log('🐟 Bolhas do Dourado - Jogo pronto!');
+        console.log('📁 Substitua os arquivos de imagem e áudio na mesma pasta para personalizar.');
+        console.log('🖼️ Imagens: peixe_dourado.png, polvo.png, tubarao.png, peixe_espada.png, agua_viva.png');
+        console.log('🖼️ Power-ups: power_gigante.png, power_triplo.png, power_rapido.png');
+        console.log('🖼️ UI: coracao.png, fundo_oceano.png');
+        console.log('🔊 Sons: musica_fundo.mp3, disparo.wav, explosao.wav, powerup.wav, dano.wav, gameover.wav');
+    </script>
+</body>
+</html>
