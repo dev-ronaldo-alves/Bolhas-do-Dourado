@@ -33,7 +33,6 @@
             background: #0a3d62;
             width: 100vw;
             height: 100vh;
-            object-fit: fill; /* garante que preencha sem distorção, pois a proporção é a mesma */
         }
 
         #ui-layer {
@@ -57,14 +56,14 @@
             text-align: center;
             background: rgba(0, 20, 40, 0.85);
             border-radius: 20px;
-            padding: 30px 25px;
+            padding: 24px 20px; /* reduzido de 30px 25px */
             margin: 20px;
             color: #fff;
             pointer-events: auto;
             border: 3px solid #ffd700;
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
             width: 85%;
-            max-width: 400px;
+            max-width: 320px; /* reduzido de 400px */
         }
 
         .screen.active {
@@ -72,32 +71,32 @@
         }
 
         h1 {
-            font-size: 2.2em;
+            font-size: 2.0em; /* levemente reduzido */
             color: #ffd700;
             text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             letter-spacing: 2px;
         }
 
         h2 {
-            font-size: 1.5em;
+            font-size: 1.4em;
             color: #ffd700;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         p {
-            font-size: 0.95em;
-            margin: 8px 0;
+            font-size: 0.9em;
+            margin: 6px 0;
             color: #cce6ff;
             line-height: 1.4;
         }
 
         .instructions {
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: #aad4ff;
-            margin: 12px 0;
+            margin: 10px 0;
             background: rgba(255, 255, 255, 0.08);
-            padding: 12px 15px;
+            padding: 10px 12px;
             border-radius: 10px;
             text-align: left;
         }
@@ -106,10 +105,10 @@
             display: inline-block;
             background: #ffd700;
             color: #0a3d62;
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 5px;
             font-weight: bold;
-            font-size: 0.8em;
+            font-size: 0.75em;
             margin-right: 3px;
         }
 
@@ -117,12 +116,12 @@
             background: linear-gradient(180deg, #ffd700, #e6b800);
             color: #0a3d62;
             border: none;
-            padding: 14px 40px;
-            font-size: 1.3em;
+            padding: 12px 32px;
+            font-size: 1.1em;
             font-weight: bold;
             border-radius: 30px;
             cursor: pointer;
-            margin-top: 15px;
+            margin-top: 12px;
             letter-spacing: 1px;
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
             transition: all 0.2s;
@@ -136,16 +135,16 @@
         }
 
         .score-final {
-            font-size: 2.5em;
+            font-size: 2.2em;
             font-weight: bold;
             color: #fff;
             text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
         }
 
         .high-score {
-            font-size: 1.2em;
+            font-size: 1.0em;
             color: #ffd700;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         #mobile-controls {
@@ -157,33 +156,33 @@
         .control-btn {
             pointer-events: auto;
             position: fixed;
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
             border: none;
-            font-size: 34px;
+            font-size: 28px;
             background: rgba(255, 255, 255, .25);
         }
         #btn-up {
-            left: 20px;
-            bottom: 150px;
+            left: 15px;
+            bottom: 140px;
         }
         #btn-down {
-            left: 20px;
-            bottom: 55px;
+            left: 15px;
+            bottom: 50px;
         }
         #btn-fire {
-            right: 20px;
-            bottom: 90px;
-            width: 95px;
-            height: 95px;
+            right: 15px;
+            bottom: 80px;
+            width: 85px;
+            height: 85px;
         }
         #start-screen,
         #gameover-screen {
             position: fixed !important;
             left: 50% !important;
             top: 50% !important;
-            transform: translate(-50%, -50%) !important;
+            transform: translate(-50%, -50%) scale(0.8) !important; /* redução de 20% */
         }
     </style>
 </head>
@@ -197,7 +196,7 @@
             <p><span>👆 Toque</span> para soltar bolhas</p>
             <p><span>💊 Power-ups</span> melhoram as bolhas</p>
         </div>
-        <p style="font-size:0.8em;color:#ffd700;">⚡ Cuidado com polvos, tubarões e peixes-espada!</p>
+        <p style="font-size:0.75em;color:#ffd700;">⚡ Cuidado com polvos, tubarões e peixes-espada!</p>
         <button id="btn-start">INICIAR</button>
     </div>
 
@@ -210,7 +209,7 @@
     <!-- Tela de Game Over -->
     <div id="gameover-screen" class="screen">
         <h2>GAME OVER</h2>
-        <p style="font-size:1em;">Sua Pontuação:</p>
+        <p style="font-size:0.9em;">Sua Pontuação:</p>
         <div class="score-final" id="final-score">0</div>
         <p class="high-score">🏆 Recorde: <span id="high-score-display">0</span></p>
         <button id="btn-restart">JOGAR NOVAMENTE</button>
@@ -232,20 +231,11 @@
             const h = window.innerHeight;
             canvas.width = w;
             canvas.height = h;
-            // Não precisamos de scale/offset porque a proporção é a mesma (landscape)
-            // Mas se quisermos manter a resolução interna fixa, podemos desenhar em BASE_WIDTH x BASE_HEIGHT
-            // e usar escala para preencher a tela. Para evitar distorção, usamos um fator de escala
-            // que mantém a proporção.
-            // Vamos usar o método mais simples: desenhar sempre em BASE_WIDTH x BASE_HEIGHT e escalar.
-            // Para isso, calculamos a escala para caber exatamente na tela sem distorção.
             const scaleX = w / BASE_WIDTH;
             const scaleY = h / BASE_HEIGHT;
-            // Como a proporção é a mesma, scaleX == scaleY (ou muito próximo), mas usamos o menor para não cortar
             const s = Math.min(scaleX, scaleY);
-            // Centralizar
             const offsetX = (w - BASE_WIDTH * s) / 2;
             const offsetY = (h - BASE_HEIGHT * s) / 2;
-            // Guardar para uso no render
             window._gameScale = s;
             window._gameOffsetX = offsetX;
             window._gameOffsetY = offsetY;
@@ -389,12 +379,11 @@
             });
         }
 
-        // ========== CONTROLES TOUCH (conversão de coordenadas) ==========
+        // ========== CONTROLES TOUCH ==========
         function screenToGame(clientX, clientY) {
             const rect = canvas.getBoundingClientRect();
             const sx = (clientX - rect.left);
             const sy = (clientY - rect.top);
-            // Usando a escala e offset calculados no resize
             const s = window._gameScale || 1;
             const ox = window._gameOffsetX || 0;
             const oy = window._gameOffsetY || 0;
@@ -450,7 +439,6 @@
             touchMoved = false;
         }, { passive: false });
 
-        // Mouse para desktop
         canvas.addEventListener('mousedown', (e) => {
             if (gameState !== STATE.PLAYING) return;
             const pos = screenToGame(e.clientX, e.clientY);
@@ -543,7 +531,7 @@
             }
         }
 
-        // ========== FUNÇÕES DE SPAWN ==========
+        // ========== SPAWN ==========
         function spawnarInimigo() {
             const tipos = Object.keys(INIMIGO_TIPOS);
             const tipoNome = tipos[Math.floor(Math.random() * tipos.length)];
@@ -612,7 +600,7 @@
             }
         }
 
-        // ========== CONTROLES VIRTUAIS (botões) ==========
+        // ========== CONTROLES VIRTUAIS ==========
         let moveUp = false,
             moveDown = false;
         document.addEventListener('DOMContentLoaded', () => {
@@ -636,7 +624,6 @@
         function atualizar() {
             if (gameState !== STATE.PLAYING) return;
 
-            // Movimento do player
             if (moveUp) player.targetY -= player.speed * 4;
             if (moveDown) player.targetY += player.speed * 4;
             const dy = player.targetY - player.y;
@@ -646,7 +633,6 @@
             if (player.y < player.height / 2) player.y = player.height / 2;
             if (player.y > BASE_HEIGHT - player.height / 2) player.y = BASE_HEIGHT - player.height / 2;
 
-            // Bolhas
             for (let i = bolhas.length - 1; i >= 0; i--) {
                 const b = bolhas[i];
                 b.x += b.vx;
@@ -664,7 +650,6 @@
                 if (powerupTimer <= 0) powerupAtivo = null;
             }
 
-            // Spawn inimigos
             spawnTimer++;
             const intervaloAtual = Math.max(20, spawnInterval / speedMultiplier);
             if (spawnTimer >= intervaloAtual) {
@@ -672,14 +657,12 @@
                 spawnarInimigo();
             }
 
-            // Spawn power-ups
             powerupSpawnTimer++;
             if (powerupSpawnTimer >= POWERUP_SPAWN_INTERVAL / speedMultiplier) {
                 powerupSpawnTimer = 0;
                 if (Math.random() < 0.7) spawnarPowerup();
             }
 
-            // Atualizar inimigos
             for (let i = inimigos.length - 1; i >= 0; i--) {
                 const inimigo = inimigos[i];
                 inimigo.x -= inimigo.velocidade;
@@ -723,7 +706,6 @@
                     criarExplosao(inimigo.x - 10, inimigo.y, '#ffffff', 5);
                 }
 
-                // Colisão com player
                 if (invencibleTimer <= 0) {
                     const px = player.x;
                     const py = player.y;
@@ -752,7 +734,6 @@
                 }
             }
 
-            // Power-ups coletáveis
             for (let i = powerupsColetaveis.length - 1; i >= 0; i--) {
                 const pu = powerupsColetaveis[i];
                 pu.x -= pu.velocidade;
@@ -783,7 +764,6 @@
                 }
             }
 
-            // Partículas
             for (let i = particulas.length - 1; i >= 0; i--) {
                 const p = particulas[i];
                 p.x += p.vx;
@@ -794,7 +774,6 @@
                 }
             }
 
-            // Fundo
             bgScroll = (bgScroll + bgSpeed * speedMultiplier) % BASE_WIDTH;
             for (let b of bgBubbles) {
                 b.y -= b.speed;
@@ -866,7 +845,7 @@
             musicaFundo.play().catch(() => {});
         }
 
-        // ========== RENDERIZAÇÃO (com escala para preencher a tela) ==========
+        // ========== RENDERIZAÇÃO ==========
         function desenharFundo() {
             const grad = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
             grad.addColorStop(0, '#0a3d62');
@@ -1148,8 +1127,6 @@
 
         function renderizar() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Aplica a transformação para preencher a tela com a escala calculada
             const s = window._gameScale || 1;
             const ox = window._gameOffsetX || 0;
             const oy = window._gameOffsetY || 0;
@@ -1157,7 +1134,6 @@
             ctx.translate(ox, oy);
             ctx.scale(s, s);
 
-            // Desenha tudo em coordenadas do jogo (BASE_WIDTH x BASE_HEIGHT)
             desenharFundo();
 
             if (gameState === STATE.PLAYING || gameState === STATE.GAMEOVER) {
@@ -1264,7 +1240,7 @@
                 ctx.textAlign = 'left';
             }
 
-            ctx.restore(); // fim da transformação
+            ctx.restore();
         }
 
         // ========== GAME LOOP ==========
@@ -1292,7 +1268,7 @@
 
         gameLoop();
 
-        console.log('🐟 Bolhas do Dourado - Versão Landscape nativa!');
+        console.log('🐟 Bolhas do Dourado - Telas reduzidas em 20% para landscape!');
     </script>
 </body>
 </html>
