@@ -71,6 +71,14 @@
             display: flex;
         }
 
+        #mobile-controls{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20;}
+        .control-btn{pointer-events:auto;position:fixed;border:none;border-radius:50%;width:70px;height:70px;font-size:32px;background:rgba(255,255,255,.25);color:#fff;}
+        #btn-up{left:15px;bottom:140px;}
+        #btn-down{left:15px;bottom:55px;}
+        #btn-fire{right:15px;bottom:95px;width:85px;height:85px;}
+        #start-screen,#gameover-screen{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;}
+
+
         h1 {
             font-size: 2.2em;
             color: #ffd700;
@@ -162,6 +170,14 @@
         <p style="font-size:0.8em;color:#ffd700;">⚡ Cuidado com polvos, tubarões e peixes-espada!</p>
         <button id="btn-start">INICIAR</button>
     </div>
+
+    
+<div id="mobile-controls">
+<button id="btn-up" class="control-btn">⬆️</button>
+<button id="btn-down" class="control-btn">⬇️</button>
+<button id="btn-fire" class="control-btn">🔵</button>
+</div>
+
 
     <!-- Tela de Game Over -->
     <div id="gameover-screen" class="screen">
@@ -562,11 +578,25 @@
             }
         }
 
-        // ========== ATUALIZAÇÃO DO JOGO ==========
+        
+let moveUp=false, moveDown=false;
+function bindHold(id, prop){
+ const b=document.getElementById(id);
+ ['touchstart','mousedown'].forEach(ev=>b.addEventListener(ev,e=>{e.preventDefault(); window[prop]=true;}));
+ ['touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>b.addEventListener(ev,e=>{window[prop]=false;}));
+}
+bindHold('btn-up','moveUp');
+bindHold('btn-down','moveDown');
+const fireBtn=document.getElementById('btn-fire');
+['touchstart','mousedown'].forEach(ev=>fireBtn.addEventListener(ev,e=>{e.preventDefault(); if(gameState===STATE.PLAYING) dispararBolha();}));
+
+// ========== ATUALIZAÇÃO DO JOGO ==========
         function atualizar() {
             if (gameState !== STATE.PLAYING) return;
 
             // Atualizar player
+            if(moveUp) player.targetY -= player.speed*3;
+            if(moveDown) player.targetY += player.speed*3;
             const dy = player.targetY - player.y;
             if (Math.abs(dy) > 1) {
                 player.y += Math.sign(dy) * Math.min(Math.abs(dy), player.speed);
