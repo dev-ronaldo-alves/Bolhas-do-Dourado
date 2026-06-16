@@ -33,7 +33,7 @@
             background: #0a3d62;
             width: 100vw;
             height: 100vh;
-            /* ocupa toda a tela */
+            object-fit: fill; /* garante que preencha sem distorção, pois a proporção é a mesma */
         }
 
         #ui-layer {
@@ -219,34 +219,36 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // ========== CANVAS SETUP ==========
+        // ========== CANVAS SETUP - LANDSCAPE NATIVO ==========
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Dimensões base do jogo (proporção original retrato)
-        const BASE_WIDTH = 420;
-        const BASE_HEIGHT = 720;
-
-        // Variáveis de escala e offset (contain: tudo visível, centralizado)
-        let scale = 1;
-        let offsetX = 0;
-        let offsetY = 0;
+        // Dimensões base em landscape (16:9)
+        const BASE_WIDTH = 800;
+        const BASE_HEIGHT = 450;
 
         function resizeCanvas() {
             const w = window.innerWidth;
             const h = window.innerHeight;
-
             canvas.width = w;
             canvas.height = h;
-
-            // Calcula escala para que o jogo caiba totalmente dentro da tela (contain)
+            // Não precisamos de scale/offset porque a proporção é a mesma (landscape)
+            // Mas se quisermos manter a resolução interna fixa, podemos desenhar em BASE_WIDTH x BASE_HEIGHT
+            // e usar escala para preencher a tela. Para evitar distorção, usamos um fator de escala
+            // que mantém a proporção.
+            // Vamos usar o método mais simples: desenhar sempre em BASE_WIDTH x BASE_HEIGHT e escalar.
+            // Para isso, calculamos a escala para caber exatamente na tela sem distorção.
             const scaleX = w / BASE_WIDTH;
             const scaleY = h / BASE_HEIGHT;
-            scale = Math.min(scaleX, scaleY); // a menor escala para não cortar nada
-
-            // Centraliza o conteúdo
-            offsetX = (w - BASE_WIDTH * scale) / 2;
-            offsetY = (h - BASE_HEIGHT * scale) / 2;
+            // Como a proporção é a mesma, scaleX == scaleY (ou muito próximo), mas usamos o menor para não cortar
+            const s = Math.min(scaleX, scaleY);
+            // Centralizar
+            const offsetX = (w - BASE_WIDTH * s) / 2;
+            const offsetY = (h - BASE_HEIGHT * s) / 2;
+            // Guardar para uso no render
+            window._gameScale = s;
+            window._gameOffsetX = offsetX;
+            window._gameOffsetY = offsetY;
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -325,7 +327,7 @@
 
         // ========== JOGADOR ==========
         const player = {
-            x: 80,
+            x: 100,
             y: BASE_HEIGHT / 2,
             width: 48,
             height: 32,
@@ -387,14 +389,17 @@
             });
         }
 
-        // ========== CONTROLES TOUCH (com conversão de coordenadas) ==========
+        // ========== CONTROLES TOUCH (conversão de coordenadas) ==========
         function screenToGame(clientX, clientY) {
             const rect = canvas.getBoundingClientRect();
             const sx = (clientX - rect.left);
             const sy = (clientY - rect.top);
-            // Converte para coordenadas do jogo (considerando offset e scale)
-            const gx = (sx - offsetX) / scale;
-            const gy = (sy - offsetY) / scale;
+            // Usando a escala e offset calculados no resize
+            const s = window._gameScale || 1;
+            const ox = window._gameOffsetX || 0;
+            const oy = window._gameOffsetY || 0;
+            const gx = (sx - ox) / s;
+            const gy = (sy - oy) / s;
             return { x: gx, y: gy };
         }
 
@@ -861,7 +866,7 @@
             musicaFundo.play().catch(() => {});
         }
 
-        // ========== RENDERIZAÇÃO (com transformação para centralizar e escalar) ==========
+        // ========== RENDERIZAÇÃO (com escala para preencher a tela) ==========
         function desenharFundo() {
             const grad = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
             grad.addColorStop(0, '#0a3d62');
@@ -1144,10 +1149,13 @@
         function renderizar() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Aplica transformação para centralizar e escalar (contain)
+            // Aplica a transformação para preencher a tela com a escala calculada
+            const s = window._gameScale || 1;
+            const ox = window._gameOffsetX || 0;
+            const oy = window._gameOffsetY || 0;
             ctx.save();
-            ctx.translate(offsetX, offsetY);
-            ctx.scale(scale, scale);
+            ctx.translate(ox, oy);
+            ctx.scale(s, s);
 
             // Desenha tudo em coordenadas do jogo (BASE_WIDTH x BASE_HEIGHT)
             desenharFundo();
@@ -1284,7 +1292,7 @@
 
         gameLoop();
 
-        console.log('🐟 Bolhas do Dourado - Agora com contain, todos os elementos visíveis em landscape!');
+        console.log('🐟 Bolhas do Dourado - Versão Landscape nativa!');
     </script>
 </body>
 </html>
