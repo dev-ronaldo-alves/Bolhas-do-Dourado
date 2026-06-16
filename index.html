@@ -31,9 +31,9 @@
         canvas {
             display: block;
             background: #0a3d62;
-            max-width: 100vw;
-            max-height: 100vh;
-            object-fit: contain;
+            width: 100vw;
+            height: 100vh;
+            /* ocupa toda a tela */
         }
 
         #ui-layer {
@@ -147,15 +147,45 @@
             color: #ffd700;
             margin-bottom: 5px;
         }
-    
-#mobile-controls{position:fixed;inset:0;pointer-events:none;z-index:50}
-.control-btn{pointer-events:auto;position:fixed;width:80px;height:80px;border-radius:50%;border:none;font-size:34px;background:rgba(255,255,255,.25)}
-#btn-up{left:20px;bottom:150px}
-#btn-down{left:20px;bottom:55px}
-#btn-fire{right:20px;bottom:90px;width:95px;height:95px}
-#start-screen,#gameover-screen{position:fixed!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important}
 
-</style>
+        #mobile-controls {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+        .control-btn {
+            pointer-events: auto;
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            font-size: 34px;
+            background: rgba(255, 255, 255, .25);
+        }
+        #btn-up {
+            left: 20px;
+            bottom: 150px;
+        }
+        #btn-down {
+            left: 20px;
+            bottom: 55px;
+        }
+        #btn-fire {
+            right: 20px;
+            bottom: 90px;
+            width: 95px;
+            height: 95px;
+        }
+        #start-screen,
+        #gameover-screen {
+            position: fixed !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+        }
+    </style>
 </head>
 <body>
 
@@ -171,13 +201,13 @@
         <button id="btn-start">INICIAR</button>
     </div>
 
-    
-<div id="mobile-controls">
-<button id="btn-up" class="control-btn">⬆️</button>
-<button id="btn-down" class="control-btn">⬇️</button>
-<button id="btn-fire" class="control-btn">🎯</button>
-</div>
-<!-- Tela de Game Over -->
+    <div id="mobile-controls">
+        <button id="btn-up" class="control-btn">⬆️</button>
+        <button id="btn-down" class="control-btn">⬇️</button>
+        <button id="btn-fire" class="control-btn">🎯</button>
+    </div>
+
+    <!-- Tela de Game Over -->
     <div id="gameover-screen" class="screen">
         <h2>GAME OVER</h2>
         <p style="font-size:1em;">Sua Pontuação:</p>
@@ -193,30 +223,30 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Dimensões base (retrato mobile)
+        // Dimensões base do jogo (proporção original)
         const BASE_WIDTH = 420;
         const BASE_HEIGHT = 720;
+
+        // Variáveis de escala e offset (preencher tela - cover)
         let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
 
         function resizeCanvas() {
-            const maxW = window.innerWidth;
-            const maxH = window.innerHeight;
-            const ratio = BASE_WIDTH / BASE_HEIGHT;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
 
-            let w, h;
-            if (maxW / maxH > ratio) {
-                h = maxH;
-                w = h * ratio;
-            } else {
-                w = maxW;
-                h = w / ratio;
-            }
+            canvas.width = w;
+            canvas.height = h;
 
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            canvas.width = BASE_WIDTH;
-            canvas.height = BASE_HEIGHT;
-            scale = BASE_WIDTH / w;
+            // Calcula escala para cobrir toda a tela (cover)
+            const scaleX = w / BASE_WIDTH;
+            const scaleY = h / BASE_HEIGHT;
+            scale = Math.max(scaleX, scaleY); // garante que preencha totalmente
+
+            // Centraliza o conteúdo (corta excesso)
+            offsetX = (w - BASE_WIDTH * scale) / 2;
+            offsetY = (h - BASE_HEIGHT * scale) / 2;
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -225,7 +255,7 @@
         });
         resizeCanvas();
 
-        // ========== IMAGENS (substitua os caminhos pelas suas imagens PNG) ==========
+        // ========== IMAGENS ==========
         const imgPeixe = new Image();
         imgPeixe.src = './img/peixe-dourado.png';
         const imgPolvo = new Image();
@@ -247,7 +277,7 @@
         const imgFundo = new Image();
         imgFundo.src = './img/fundo_oceano.png';
 
-        // ========== ÁUDIO (substitua pelos seus arquivos) ==========
+        // ========== ÁUDIO ==========
         const musicaFundo = new Audio('./sound/musica-fundo.mp3');
         musicaFundo.loop = true;
         musicaFundo.volume = 0.3;
@@ -286,15 +316,14 @@
         let highScore = 0;
         let lives = 3;
         let invencibleTimer = 0;
-        let invencibleDuration = 120; // frames (2 segundos a 60fps)
+        const invencibleDuration = 120;
 
-        // Carregar high score
         try {
             const saved = localStorage.getItem('bolhasDoDourado_highScore');
             if (saved) highScore = parseInt(saved);
         } catch (e) {}
 
-        // ========== JOGADOR (PEIXINHO) ==========
+        // ========== JOGADOR ==========
         const player = {
             x: 80,
             y: BASE_HEIGHT / 2,
@@ -311,12 +340,12 @@
         const BOLHA_SPEED = 7;
         const BOLHA_RADIUS = 6;
         let bolhaCooldown = 0;
-        const BOLHA_COOLDOWN_BASE = 18; // frames entre disparos
+        const BOLHA_COOLDOWN_BASE = 18;
 
-        // ========== POWER-UPS ATIVOS ==========
-        let powerupAtivo = null; // 'gigante' | 'triplo' | 'rapido'
+        // ========== POWER-UPS ==========
+        let powerupAtivo = null;
         let powerupTimer = 0;
-        const POWERUP_DURATION = 480; // 8 segundos a 60fps
+        const POWERUP_DURATION = 480;
 
         // ========== INIMIGOS ==========
         let inimigos = [];
@@ -332,14 +361,14 @@
         };
 
         let spawnTimer = 0;
-        let spawnInterval = 90; // frames base entre spawns
+        let spawnInterval = 90;
         let baseSpeed = 1.0;
         let speedMultiplier = 1.0;
 
         // ========== POWER-UPS COLETÁVEIS ==========
         let powerupsColetaveis = [];
         let powerupSpawnTimer = 0;
-        const POWERUP_SPAWN_INTERVAL = 360; // 6 segundos
+        const POWERUP_SPAWN_INTERVAL = 360;
 
         // ========== PARTÍCULAS ==========
         let particulas = [];
@@ -347,7 +376,6 @@
         // ========== FUNDO SCROLL ==========
         let bgScroll = 0;
         let bgSpeed = 2.5;
-        // Bolhas decorativas de fundo
         let bgBubbles = [];
         for (let i = 0; i < 20; i++) {
             bgBubbles.push({
@@ -359,41 +387,49 @@
             });
         }
 
-        // ========== CONTROLES TOUCH ==========
+        // ========== CONTROLES TOUCH (com conversão de coordenadas) ==========
+        function screenToGame(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const sx = (clientX - rect.left);
+            const sy = (clientY - rect.top);
+            // Converte para coordenadas do jogo
+            const gx = (sx - offsetX) / scale;
+            const gy = (sy - offsetY) / scale;
+            return { x: gx, y: gy };
+        }
+
         let touchStartX = 0;
         let touchStartY = 0;
         let touchCurrentY = 0;
         let touchActive = false;
         let touchMoved = false;
-        const TAP_THRESHOLD = 6; // pixels para diferenciar tap de drag
+        const TAP_THRESHOLD = 6;
 
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (gameState !== STATE.PLAYING) return;
             const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            touchStartX = (touch.clientX - rect.left) * scale;
-            touchStartY = (touch.clientY - rect.top) * scale;
-            touchCurrentY = touchStartY;
+            const pos = screenToGame(touch.clientX, touch.clientY);
+            touchStartX = pos.x;
+            touchStartY = pos.y;
+            touchCurrentY = pos.y;
             touchActive = true;
             touchMoved = false;
-            player.targetY = touchStartY;
+            player.targetY = pos.y;
         }, { passive: false });
 
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             if (!touchActive || gameState !== STATE.PLAYING) return;
             const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const cx = (touch.clientX - rect.left) * scale;
-            const cy = (touch.clientY - rect.top) * scale;
-            const dx = cx - touchStartX;
-            const dy = cy - touchStartY;
+            const pos = screenToGame(touch.clientX, touch.clientY);
+            const dx = pos.x - touchStartX;
+            const dy = pos.y - touchStartY;
             if (Math.abs(dx) > TAP_THRESHOLD || Math.abs(dy) > TAP_THRESHOLD) {
                 touchMoved = true;
             }
-            touchCurrentY = cy;
-            player.targetY = cy;
+            touchCurrentY = pos.y;
+            player.targetY = pos.y;
         }, { passive: false });
 
         canvas.addEventListener('touchend', (e) => {
@@ -403,37 +439,34 @@
                 return;
             }
             if (!touchMoved && touchActive) {
-                // TAP = disparo
                 dispararBolha();
             }
             touchActive = false;
             touchMoved = false;
         }, { passive: false });
 
-        // Mouse para teste no desktop
+        // Mouse para desktop
         canvas.addEventListener('mousedown', (e) => {
             if (gameState !== STATE.PLAYING) return;
-            const rect = canvas.getBoundingClientRect();
-            touchStartX = (e.clientX - rect.left) * scale;
-            touchStartY = (e.clientY - rect.top) * scale;
-            touchCurrentY = touchStartY;
+            const pos = screenToGame(e.clientX, e.clientY);
+            touchStartX = pos.x;
+            touchStartY = pos.y;
+            touchCurrentY = pos.y;
             touchActive = true;
             touchMoved = false;
-            player.targetY = touchStartY;
+            player.targetY = pos.y;
         });
 
         canvas.addEventListener('mousemove', (e) => {
             if (!touchActive || gameState !== STATE.PLAYING) return;
-            const rect = canvas.getBoundingClientRect();
-            const cx = (e.clientX - rect.left) * scale;
-            const cy = (e.clientY - rect.top) * scale;
-            const dx = cx - touchStartX;
-            const dy = cy - touchStartY;
+            const pos = screenToGame(e.clientX, e.clientY);
+            const dx = pos.x - touchStartX;
+            const dy = pos.y - touchStartY;
             if (Math.abs(dx) > TAP_THRESHOLD || Math.abs(dy) > TAP_THRESHOLD) {
                 touchMoved = true;
             }
-            touchCurrentY = cy;
-            player.targetY = cy;
+            touchCurrentY = pos.y;
+            player.targetY = pos.y;
         });
 
         canvas.addEventListener('mouseup', (e) => {
@@ -450,10 +483,8 @@
 
         function dispararBolha() {
             if (bolhaCooldown > 0) return;
-
             const cooldownAtual = powerupAtivo === 'rapido' ? BOLHA_COOLDOWN_BASE / 2 : BOLHA_COOLDOWN_BASE;
             bolhaCooldown = cooldownAtual;
-
             tocarSom(somDisparo);
 
             if (powerupAtivo === 'triplo') {
@@ -576,37 +607,41 @@
             }
         }
 
-        
-let moveUp=false, moveDown=false;
-document.addEventListener('DOMContentLoaded',()=>{
- const up=document.getElementById('btn-up');
- const down=document.getElementById('btn-down');
- const fire=document.getElementById('btn-fire');
- const hold=(el,setter)=>{
-   ['touchstart','mousedown'].forEach(e=>el.addEventListener(e,x=>{x.preventDefault(); setter(true);}));
-   ['touchend','touchcancel','mouseup','mouseleave'].forEach(e=>el.addEventListener(e,()=>setter(false)));
- };
- hold(up,v=>moveUp=v);
- hold(down,v=>moveDown=v);
- ['touchstart','mousedown'].forEach(e=>fire.addEventListener(e,x=>{x.preventDefault(); if(typeof dispararBolha==='function') dispararBolha();}));
-});
+        // ========== CONTROLES VIRTUAIS (botões) ==========
+        let moveUp = false,
+            moveDown = false;
+        document.addEventListener('DOMContentLoaded', () => {
+            const up = document.getElementById('btn-up');
+            const down = document.getElementById('btn-down');
+            const fire = document.getElementById('btn-fire');
 
-// ========== ATUALIZAÇÃO DO JOGO ==========
+            const hold = (el, setter) => {
+                ['touchstart', 'mousedown'].forEach(e => el.addEventListener(e, x => { x.preventDefault();
+                    setter(true); }));
+                ['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(e => el.addEventListener(e, () =>
+                    setter(false)));
+            };
+            hold(up, v => moveUp = v);
+            hold(down, v => moveDown = v);
+            ['touchstart', 'mousedown'].forEach(e => fire.addEventListener(e, x => { x.preventDefault(); if (typeof
+                    dispararBolha === 'function') dispararBolha(); }));
+        });
+
+        // ========== ATUALIZAÇÃO ==========
         function atualizar() {
             if (gameState !== STATE.PLAYING) return;
 
-            // Atualizar player
-            if(moveUp) player.targetY -= player.speed*4;
-            if(moveDown) player.targetY += player.speed*4;
+            // Movimento do player
+            if (moveUp) player.targetY -= player.speed * 4;
+            if (moveDown) player.targetY += player.speed * 4;
             const dy = player.targetY - player.y;
             if (Math.abs(dy) > 1) {
                 player.y += Math.sign(dy) * Math.min(Math.abs(dy), player.speed);
             }
-            // Limitar player à tela
             if (player.y < player.height / 2) player.y = player.height / 2;
             if (player.y > BASE_HEIGHT - player.height / 2) player.y = BASE_HEIGHT - player.height / 2;
 
-            // Atualizar bolhas
+            // Bolhas
             for (let i = bolhas.length - 1; i >= 0; i--) {
                 const b = bolhas[i];
                 b.x += b.vx;
@@ -616,21 +651,15 @@ document.addEventListener('DOMContentLoaded',()=>{
                 }
             }
 
-            // Cooldown de disparo
             if (bolhaCooldown > 0) bolhaCooldown--;
-
-            // Invencibilidade
             if (invencibleTimer > 0) invencibleTimer--;
 
-            // Power-up ativo
             if (powerupTimer > 0) {
                 powerupTimer--;
-                if (powerupTimer <= 0) {
-                    powerupAtivo = null;
-                }
+                if (powerupTimer <= 0) powerupAtivo = null;
             }
 
-            // Spawn de inimigos
+            // Spawn inimigos
             spawnTimer++;
             const intervaloAtual = Math.max(20, spawnInterval / speedMultiplier);
             if (spawnTimer >= intervaloAtual) {
@@ -638,7 +667,7 @@ document.addEventListener('DOMContentLoaded',()=>{
                 spawnarInimigo();
             }
 
-            // Spawn de power-ups
+            // Spawn power-ups
             powerupSpawnTimer++;
             if (powerupSpawnTimer >= POWERUP_SPAWN_INTERVAL / speedMultiplier) {
                 powerupSpawnTimer = 0;
@@ -654,7 +683,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     continue;
                 }
 
-                // Colisão com bolhas
                 let acertado = false;
                 for (let j = bolhas.length - 1; j >= 0; j--) {
                     const b = bolhas[j];
@@ -664,7 +692,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     const colisaoDist = b.radius + Math.min(inimigo.largura, inimigo.altura) / 2;
 
                     if (dist < colisaoDist) {
-                        // Acerto!
                         if (b.gigante) {
                             inimigo.vidas = 0;
                         } else {
@@ -682,7 +709,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     criarExplosao(inimigo.x, inimigo.y, inimigo.cor, 20);
                     tocarSom(somExplosao);
                     score += inimigo.pontos;
-                    // Aumentar dificuldade
                     atualizarDificuldade();
                     inimigos.splice(i, 1);
                     continue;
@@ -709,12 +735,10 @@ document.addEventListener('DOMContentLoaded',()=>{
                         py - ph / 2 < iy + ih &&
                         py + ph / 2 > iy
                     ) {
-                        // Dano
                         lives--;
                         invencibleTimer = invencibleDuration;
                         tocarSom(somDano);
                         criarExplosao(player.x, player.y, '#ff6b6b', 12);
-
                         if (lives <= 0) {
                             gameOver();
                             return;
@@ -723,7 +747,7 @@ document.addEventListener('DOMContentLoaded',()=>{
                 }
             }
 
-            // Atualizar power-ups coletáveis
+            // Power-ups coletáveis
             for (let i = powerupsColetaveis.length - 1; i >= 0; i--) {
                 const pu = powerupsColetaveis[i];
                 pu.x -= pu.velocidade;
@@ -733,7 +757,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     continue;
                 }
 
-                // Colisão com player
                 const px = player.x;
                 const py = player.y;
                 const pw = player.width;
@@ -755,7 +778,7 @@ document.addEventListener('DOMContentLoaded',()=>{
                 }
             }
 
-            // Atualizar partículas
+            // Partículas
             for (let i = particulas.length - 1; i >= 0; i--) {
                 const p = particulas[i];
                 p.x += p.vx;
@@ -766,10 +789,8 @@ document.addEventListener('DOMContentLoaded',()=>{
                 }
             }
 
-            // Atualizar fundo
+            // Fundo
             bgScroll = (bgScroll + bgSpeed * speedMultiplier) % BASE_WIDTH;
-
-            // Bolhas de fundo
             for (let b of bgBubbles) {
                 b.y -= b.speed;
                 b.x += Math.sin(b.y * 0.02) * 0.3;
@@ -840,9 +861,8 @@ document.addEventListener('DOMContentLoaded',()=>{
             musicaFundo.play().catch(() => {});
         }
 
-        // ========== RENDERIZAÇÃO ==========
+        // ========== RENDERIZAÇÃO (com transformação para preencher tela) ==========
         function desenharFundo() {
-            // Gradiente do oceano
             const grad = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
             grad.addColorStop(0, '#0a3d62');
             grad.addColorStop(0.5, '#1e6fa0');
@@ -850,7 +870,6 @@ document.addEventListener('DOMContentLoaded',()=>{
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
 
-            // Tentar desenhar imagem de fundo
             if (imgFundo.complete && imgFundo.naturalWidth > 0) {
                 ctx.globalAlpha = 0.3;
                 const padrao = ctx.createPattern(imgFundo, 'repeat-x');
@@ -861,7 +880,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.globalAlpha = 1;
             }
 
-            // Raios de luz
             ctx.globalAlpha = 0.06;
             for (let i = 0; i < 5; i++) {
                 const lx = (i * 100 + bgScroll * 0.3) % (BASE_WIDTH + 200) - 100;
@@ -875,14 +893,12 @@ document.addEventListener('DOMContentLoaded',()=>{
             }
             ctx.globalAlpha = 1;
 
-            // Bolhas decorativas
             for (let b of bgBubbles) {
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
                 ctx.strokeStyle = `rgba(255,255,255,${b.alpha})`;
                 ctx.lineWidth = 0.8;
                 ctx.stroke();
-                // Brilho
                 ctx.beginPath();
                 ctx.arc(b.x - b.radius * 0.3, b.y - b.radius * 0.3, b.radius * 0.25, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(255,255,255,${b.alpha * 1.5})`;
@@ -893,7 +909,6 @@ document.addEventListener('DOMContentLoaded',()=>{
         function desenharPlaceholderPeixe(x, y, w, h) {
             ctx.save();
             ctx.translate(x, y);
-            // Corpo
             const grad = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
             grad.addColorStop(0, '#ffd700');
             grad.addColorStop(0.5, '#ffe566');
@@ -902,7 +917,6 @@ document.addEventListener('DOMContentLoaded',()=>{
             ctx.beginPath();
             ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
             ctx.fill();
-            // Olho
             ctx.fillStyle = '#fff';
             ctx.beginPath();
             ctx.arc(w / 4, -h / 6, h / 5, 0, Math.PI * 2);
@@ -911,7 +925,6 @@ document.addEventListener('DOMContentLoaded',()=>{
             ctx.beginPath();
             ctx.arc(w / 4 + 2, -h / 6, h / 9, 0, Math.PI * 2);
             ctx.fill();
-            // Cauda
             ctx.fillStyle = '#ffb300';
             ctx.beginPath();
             ctx.moveTo(-w / 2, 0);
@@ -927,18 +940,13 @@ document.addEventListener('DOMContentLoaded',()=>{
             ctx.save();
             ctx.translate(x, y);
             const t = INIMIGO_TIPOS[tipo.nome];
-            if (!t) {
-                ctx.restore();
-                return;
-            }
+            if (!t) { ctx.restore(); return; }
 
             if (tipo.nome === 'polvo') {
-                // Corpo oval
                 ctx.fillStyle = t.cor;
                 ctx.beginPath();
                 ctx.ellipse(0, 0, t.largura / 2, t.altura / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
-                // Tentáculos
                 ctx.strokeStyle = t.cor;
                 ctx.lineWidth = 4;
                 for (let i = -2; i <= 2; i++) {
@@ -947,7 +955,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     ctx.quadraticCurveTo(i * 10, t.altura / 2 + 18, i * 6, t.altura / 2 + 30);
                     ctx.stroke();
                 }
-                // Olhos
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
                 ctx.arc(-8, -5, 7, 0, Math.PI * 2);
@@ -963,7 +970,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.arc(9, -4, 3.5, 0, Math.PI * 2);
                 ctx.fill();
             } else if (tipo.nome === 'tubarao') {
-                // Corpo
                 const grad = ctx.createLinearGradient(-t.largura / 2, 0, t.largura / 2, 0);
                 grad.addColorStop(0, '#4a5568');
                 grad.addColorStop(1, '#a0aec0');
@@ -971,7 +977,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.beginPath();
                 ctx.ellipse(0, 0, t.largura / 2, t.altura / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
-                // Barbatana
                 ctx.fillStyle = '#2d3748';
                 ctx.beginPath();
                 ctx.moveTo(-5, -t.altura / 2);
@@ -979,7 +984,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.lineTo(15, -t.altura / 2);
                 ctx.closePath();
                 ctx.fill();
-                // Dentes
                 ctx.fillStyle = '#fff';
                 for (let i = 0; i < 4; i++) {
                     ctx.beginPath();
@@ -988,7 +992,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     ctx.lineTo(t.largura / 2 - 5, 0 + i * 5);
                     ctx.fill();
                 }
-                // Olho
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
                 ctx.arc(t.largura / 4, -4, 4, 0, Math.PI * 2);
@@ -998,7 +1001,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.beginPath();
                 ctx.ellipse(0, 0, t.largura / 2, t.altura / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
-                // Espada
                 ctx.fillStyle = '#b0bec5';
                 ctx.beginPath();
                 ctx.moveTo(t.largura / 2, -2);
@@ -1006,14 +1008,12 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.lineTo(t.largura / 2, 2);
                 ctx.closePath();
                 ctx.fill();
-                // Olho
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
                 ctx.arc(t.largura / 4, -2, 3, 0, Math.PI * 2);
                 ctx.fill();
             } else if (tipo.nome === 'aguaViva') {
                 ctx.globalAlpha = 0.7;
-                // Campânula
                 const grad = ctx.createRadialGradient(0, -5, 2, 0, 0, t.largura / 2);
                 grad.addColorStop(0, '#ffffff');
                 grad.addColorStop(0.5, t.cor);
@@ -1022,7 +1022,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.beginPath();
                 ctx.ellipse(0, -t.altura / 6, t.largura / 2, t.altura / 3, 0, Math.PI, 0);
                 ctx.fill();
-                // Tentáculos
                 ctx.strokeStyle = 'rgba(255,255,255,0.5)';
                 ctx.lineWidth = 1.5;
                 for (let i = 0; i < 6; i++) {
@@ -1043,8 +1042,6 @@ document.addEventListener('DOMContentLoaded',()=>{
             ctx.translate(x, y);
             const escala = 1 + Math.sin(pulsar) * 0.15;
             ctx.scale(escala, escala);
-
-            // Círculo externo brilhante
             ctx.fillStyle = tipo === 'gigante' ? '#ffeb3b' : tipo === 'triplo' ? '#00cec9' : '#fd79a8';
             ctx.beginPath();
             ctx.arc(0, 0, 16, 0, Math.PI * 2);
@@ -1052,8 +1049,6 @@ document.addEventListener('DOMContentLoaded',()=>{
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
             ctx.stroke();
-
-            // Ícone
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'center';
@@ -1061,14 +1056,12 @@ document.addEventListener('DOMContentLoaded',()=>{
             if (tipo === 'gigante') ctx.fillText('💪', 0, 0);
             else if (tipo === 'triplo') ctx.fillText('✨', 0, 0);
             else ctx.fillText('⚡', 0, 0);
-
             ctx.restore();
         }
 
         function desenharBolha(b) {
             ctx.save();
             const r = b.radius;
-            // Gradiente
             const grad = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, r * 0.1, b.x, b.y, r);
             grad.addColorStop(0, 'rgba(255,255,255,0.9)');
             grad.addColorStop(0.4, 'rgba(180,230,255,0.6)');
@@ -1080,7 +1073,6 @@ document.addEventListener('DOMContentLoaded',()=>{
             ctx.strokeStyle = 'rgba(255,255,255,0.7)';
             ctx.lineWidth = 1.2;
             ctx.stroke();
-            // Brilho
             ctx.fillStyle = 'rgba(255,255,255,0.9)';
             ctx.beginPath();
             ctx.arc(b.x - r * 0.3, b.y - r * 0.35, r * 0.25, 0, Math.PI * 2);
@@ -1089,17 +1081,14 @@ document.addEventListener('DOMContentLoaded',()=>{
         }
 
         function desenharUI() {
-            // Score
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 20px Arial';
             ctx.textAlign = 'left';
             ctx.fillText(`⭐ ${score}`, 15, 35);
-            // High score
             ctx.font = '12px Arial';
             ctx.fillStyle = '#ffd700';
             ctx.fillText(`🏆 ${highScore}`, 15, 55);
 
-            // Vidas
             for (let i = 0; i < 3; i++) {
                 const cx = BASE_WIDTH - 40 - i * 35;
                 const cy = 30;
@@ -1109,7 +1098,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     } else {
                         ctx.fillStyle = '#ff4757';
                         ctx.beginPath();
-                        // Coração simples
                         const hx = cx;
                         const hy = cy;
                         ctx.moveTo(hx, hy + 6);
@@ -1129,7 +1117,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                 }
             }
 
-            // Power-up ativo
             if (powerupAtivo) {
                 const tempoRestante = Math.ceil(powerupTimer / 60);
                 ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -1155,11 +1142,17 @@ document.addEventListener('DOMContentLoaded',()=>{
         }
 
         function renderizar() {
-            ctx.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Aplica transformação para preencher a tela (cover)
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+
+            // Desenha tudo em coordenadas do jogo (BASE_WIDTH x BASE_HEIGHT)
             desenharFundo();
 
             if (gameState === STATE.PLAYING || gameState === STATE.GAMEOVER) {
-                // Power-ups coletáveis
                 for (const pu of powerupsColetaveis) {
                     if (pu.imagem && pu.imagem.complete && pu.imagem.naturalWidth > 0) {
                         ctx.save();
@@ -1173,13 +1166,11 @@ document.addEventListener('DOMContentLoaded',()=>{
                     }
                 }
 
-                // Inimigos
                 for (const inimigo of inimigos) {
                     const img = inimigo.imagem;
                     if (img && img.complete && img.naturalWidth > 0) {
                         ctx.save();
                         ctx.translate(inimigo.x, inimigo.y);
-                        // Não inverter tubarão e peixe-espada
                         if (inimigo.tipo.nome !== 'tubarao' && inimigo.tipo.nome !== 'peixeEspada') {
                             ctx.scale(-1, 1);
                         }
@@ -1188,7 +1179,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     } else {
                         desenharPlaceholderInimigo(inimigo.x, inimigo.y, inimigo.tipo);
                     }
-                    // Barra de vida se tiver > 1 vida
                     if (inimigo.vidasMax > 1 && inimigo.vidas > 0) {
                         const barW = inimigo.largura;
                         const barH = 4;
@@ -1201,18 +1191,15 @@ document.addEventListener('DOMContentLoaded',()=>{
                     }
                 }
 
-                // Bolhas
                 for (const b of bolhas) {
                     desenharBolha(b);
                 }
 
-                // Player
                 const piscando = invencibleTimer > 0 && Math.floor(invencibleTimer / 5) % 2 === 0;
                 if (!piscando || invencibleTimer <= 0) {
                     if (imgPeixe.complete && imgPeixe.naturalWidth > 0) {
                         ctx.save();
                         ctx.translate(player.x, player.y);
-                        // Leve ondulação
                         const ondulacao = Math.sin(Date.now() / 200) * 2;
                         ctx.translate(0, ondulacao);
                         ctx.drawImage(imgPeixe, -player.width / 2, -player.height / 2, player.width, player.height);
@@ -1220,8 +1207,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                     } else {
                         desenharPlaceholderPeixe(player.x, player.y, player.width, player.height);
                     }
-
-                    // Efeito de power-up
                     if (powerupAtivo) {
                         ctx.save();
                         ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 150) * 0.2;
@@ -1233,7 +1218,6 @@ document.addEventListener('DOMContentLoaded',()=>{
                         ctx.restore();
                     }
                 } else {
-                    // Piscando durante invencibilidade
                     ctx.globalAlpha = 0.4;
                     if (imgPeixe.complete && imgPeixe.naturalWidth > 0) {
                         ctx.drawImage(imgPeixe, player.x - player.width / 2, player.y - player.height / 2, player.width,
@@ -1244,10 +1228,8 @@ document.addEventListener('DOMContentLoaded',()=>{
                     ctx.globalAlpha = 1;
                 }
 
-                // Partículas
                 for (const p of particulas) {
-                    ctx.fillStyle = p.cor.replace(')', `,${p.alpha})`).replace('rgb',
-                        'rgba');
+                    ctx.fillStyle = p.cor.replace(')', `,${p.alpha})`).replace('rgb', 'rgba');
                     if (p.cor.startsWith('#')) {
                         ctx.globalAlpha = p.alpha;
                         ctx.fillStyle = p.cor;
@@ -1258,17 +1240,14 @@ document.addEventListener('DOMContentLoaded',()=>{
                 }
                 ctx.globalAlpha = 1;
 
-                // UI
                 desenharUI();
             }
 
-            // Overlay de game over
             if (gameState === STATE.GAMEOVER) {
                 ctx.fillStyle = 'rgba(0,0,0,0.4)';
                 ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
             }
 
-            // Instrução sutil na tela de jogo
             if (gameState === STATE.PLAYING && score === 0 && inimigos.length === 0) {
                 ctx.fillStyle = 'rgba(255,255,255,0.6)';
                 ctx.font = '14px Arial';
@@ -1276,6 +1255,8 @@ document.addEventListener('DOMContentLoaded',()=>{
                 ctx.fillText('Arraste para mover • Toque para disparar', BASE_WIDTH / 2, BASE_HEIGHT - 40);
                 ctx.textAlign = 'left';
             }
+
+            ctx.restore(); // fim da transformação
         }
 
         // ========== GAME LOOP ==========
@@ -1289,7 +1270,6 @@ document.addEventListener('DOMContentLoaded',()=>{
         document.getElementById('btn-start').addEventListener('click', iniciarJogo);
         document.getElementById('btn-restart').addEventListener('click', resetarJogo);
 
-        // Prevenir scroll e zoom
         document.addEventListener('touchmove', function(e) {
             if (e.target === canvas || canvas.contains(e.target)) {
                 e.preventDefault();
@@ -1300,19 +1280,11 @@ document.addEventListener('DOMContentLoaded',()=>{
             e.preventDefault();
         });
 
-        // ========== INICIAR ==========
-        // Mostrar high score na tela inicial
         document.getElementById('high-score-display').textContent = highScore;
 
-        // Iniciar loop
         gameLoop();
 
-        console.log('🐟 Bolhas do Dourado - Jogo pronto!');
-        console.log('📁 Substitua os arquivos de imagem e áudio na mesma pasta para personalizar.');
-        console.log('🖼️ Imagens: peixe_dourado.png, polvo.png, tubarao.png, peixe_espada.png, agua_viva.png');
-        console.log('🖼️ Power-ups: power_gigante.png, power_triplo.png, power_rapido.png');
-        console.log('🖼️ UI: coracao.png, fundo_oceano.png');
-        console.log('🔊 Sons: musica_fundo.mp3, disparo.wav, explosao.wav, powerup.wav, dano.wav, gameover.wav');
+        console.log('🐟 Bolhas do Dourado - Agora preenche toda a tela em landscape!');
     </script>
 </body>
 </html>
