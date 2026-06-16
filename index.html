@@ -26,6 +26,11 @@
             overflow: hidden;
             font-family: 'Arial', sans-serif;
             touch-action: none;
+            /* IMPEDE PULL-TO-REFRESH */
+            overscroll-behavior: none;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
 
         canvas {
@@ -56,14 +61,14 @@
             text-align: center;
             background: rgba(0, 20, 40, 0.85);
             border-radius: 20px;
-            padding: 24px 20px; /* reduzido de 30px 25px */
+            padding: 24px 20px;
             margin: 20px;
             color: #fff;
             pointer-events: auto;
             border: 3px solid #ffd700;
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
             width: 85%;
-            max-width: 320px; /* reduzido de 400px */
+            max-width: 320px;
         }
 
         .screen.active {
@@ -71,7 +76,7 @@
         }
 
         h1 {
-            font-size: 2.0em; /* levemente reduzido */
+            font-size: 2.0em;
             color: #ffd700;
             text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
             margin-bottom: 8px;
@@ -182,7 +187,7 @@
             position: fixed !important;
             left: 50% !important;
             top: 50% !important;
-            transform: translate(-50%, -50%) scale(0.8) !important; /* redução de 20% */
+            transform: translate(-50%, -50%) scale(0.8) !important;
         }
     </style>
 </head>
@@ -246,6 +251,11 @@
             setTimeout(resizeCanvas, 300);
         });
         resizeCanvas();
+
+        // ========== BLOQUEIO PULL-TO-REFRESH (adicional) ==========
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
 
         // ========== IMAGENS ==========
         const imgPeixe = new Image();
@@ -1268,7 +1278,7 @@
 
         gameLoop();
 
-        console.log('🐟 Bolhas do Dourado - Telas reduzidas em 20% para landscape!');
+        console.log('🐟 Bolhas do Dourado - Com trava contra pull-to-refresh!');
     </script>
 </body>
 </html>
