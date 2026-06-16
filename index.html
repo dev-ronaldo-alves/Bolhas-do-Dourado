@@ -223,11 +223,11 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Dimensões base do jogo (proporção original)
+        // Dimensões base do jogo (proporção original retrato)
         const BASE_WIDTH = 420;
         const BASE_HEIGHT = 720;
 
-        // Variáveis de escala e offset (preencher tela - cover)
+        // Variáveis de escala e offset (contain: tudo visível, centralizado)
         let scale = 1;
         let offsetX = 0;
         let offsetY = 0;
@@ -239,12 +239,12 @@
             canvas.width = w;
             canvas.height = h;
 
-            // Calcula escala para cobrir toda a tela (cover)
+            // Calcula escala para que o jogo caiba totalmente dentro da tela (contain)
             const scaleX = w / BASE_WIDTH;
             const scaleY = h / BASE_HEIGHT;
-            scale = Math.max(scaleX, scaleY); // garante que preencha totalmente
+            scale = Math.min(scaleX, scaleY); // a menor escala para não cortar nada
 
-            // Centraliza o conteúdo (corta excesso)
+            // Centraliza o conteúdo
             offsetX = (w - BASE_WIDTH * scale) / 2;
             offsetY = (h - BASE_HEIGHT * scale) / 2;
         }
@@ -392,7 +392,7 @@
             const rect = canvas.getBoundingClientRect();
             const sx = (clientX - rect.left);
             const sy = (clientY - rect.top);
-            // Converte para coordenadas do jogo
+            // Converte para coordenadas do jogo (considerando offset e scale)
             const gx = (sx - offsetX) / scale;
             const gy = (sy - offsetY) / scale;
             return { x: gx, y: gy };
@@ -861,7 +861,7 @@
             musicaFundo.play().catch(() => {});
         }
 
-        // ========== RENDERIZAÇÃO (com transformação para preencher tela) ==========
+        // ========== RENDERIZAÇÃO (com transformação para centralizar e escalar) ==========
         function desenharFundo() {
             const grad = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
             grad.addColorStop(0, '#0a3d62');
@@ -1144,7 +1144,7 @@
         function renderizar() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Aplica transformação para preencher a tela (cover)
+            // Aplica transformação para centralizar e escalar (contain)
             ctx.save();
             ctx.translate(offsetX, offsetY);
             ctx.scale(scale, scale);
@@ -1284,7 +1284,7 @@
 
         gameLoop();
 
-        console.log('🐟 Bolhas do Dourado - Agora preenche toda a tela em landscape!');
+        console.log('🐟 Bolhas do Dourado - Agora com contain, todos os elementos visíveis em landscape!');
     </script>
 </body>
 </html>
