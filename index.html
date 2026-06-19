@@ -160,16 +160,22 @@
         .control-btn {
             pointer-events: auto;
             position: fixed;
-            width: 70px;
-            height: 70px;
+            width: 84px;          /* +20% (era 70px) */
+            height: 84px;         /* +20% */
             border-radius: 50%;
             border: none;
-            font-size: 28px;
+            font-size: 34px;      /* +20% (era 28px) */
             background: rgba(255, 255, 255, .25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
         }
         #btn-up {
             left: 15px;
-            bottom: 140px;
+            bottom: 160px;        /* ajustado para dar mais espaço */
         }
         #btn-down {
             left: 15px;
@@ -178,8 +184,9 @@
         #btn-fire {
             right: 15px;
             bottom: 80px;
-            width: 85px;
-            height: 85px;
+            width: 102px;         /* +20% (era 85px) */
+            height: 102px;
+            font-size: 42px;      /* +20% (era 35px aprox) */
         }
         #start-screen,
         #gameover-screen {
@@ -1335,7 +1342,7 @@
 
         gameLoop();
 
-        console.log('🐟 Bolhas do Dourado - Fundo melhorado sem algas!');
+        console.log('🐟 Bolhas do Dourado - Botões 20% maiores!');
     </script>
 </body>
 </html>
